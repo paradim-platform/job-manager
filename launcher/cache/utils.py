@@ -1,0 +1,1 @@
+CACHE_RETENTION = 3 * 60 * 60 * 24

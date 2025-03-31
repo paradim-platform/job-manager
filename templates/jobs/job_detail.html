@@ -1,0 +1,83 @@
+{% extends 'base.html' %}
+{% load i18n %}
+{% load static %}
+
+{% block extra_style %}
+    <style>
+        .job-details {
+            max-width: 800px;
+            margin: 20px auto;
+            padding: 20px;
+            border: 1px solid #ddd;
+            border-radius: 5px;
+        }
+        .field {
+            margin-bottom: 10px;
+        }
+        .label {
+            font-weight: bold;
+            margin-right: 10px;
+        }
+        .state {
+            padding: 5px 10px;
+            border-radius: 3px;
+            display: inline-block;
+        }
+        pre {
+            padding: 10px;
+            border-radius: 3px;
+            white-space: pre-wrap;
+            text-align: left;
+        }
+    </style>
+{% endblock %}
+
+{% block content %}
+    <div class="job-details">
+        <h2>Job Details</h2>
+
+        <div class="field">
+            <span class="label">Study Instance UID:</span>
+            <span>{{ job.study_instance_uid }}</span>
+        </div>
+
+        <div class="field">
+            <span class="label">Series Instance UID:</span>
+            <span>{{ job.series_instance_uid }}</span>
+        </div>
+
+        <div class="field">
+            <span class="label">Slurm ID:</span>
+            <span>{{ job.slurm_id|default:"Not assigned" }}</span>
+        </div>
+
+        <div class="field">
+            <span class="label">Runnable:</span>
+            <span>{{ job.runnable }}</span>
+        </div>
+
+        <div class="field">
+            <span class="label">State:</span>
+            <span class="state">{{ job.get_state_display }}</span>
+        </div>
+
+        <div class="field">
+            <span class="label">Last Change:</span>
+            <span>{{ job.last_change }}</span>
+        </div>
+
+        {% if job.kheops_album_id %}
+        <div class="field">
+            <span class="label">Kheops Album ID:</span>
+            <span>{{ job.kheops_album_id }}</span>
+        </div>
+        {% endif %}
+
+        {% if job.logs %}
+        <div class="field">
+            <span class="label">Logs:</span>
+            <pre>{{ job.logs }}</pre>
+        </div>
+        {% endif %}
+    </div>
+{% endblock %}

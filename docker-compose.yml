@@ -1,0 +1,37 @@
+services:
+  job-manager:
+    build: .
+    command: gunicorn --bind :8000 --workers 2 job_manager.wsgi
+    container_name: job-manager
+    ports:
+      - "8000:8000"
+    env_file:
+      - .env
+    depends_on:
+      - db
+      - celery-worker
+      - rabbitmq
+
+  celery-worker:
+    build: .
+    entrypoint: ["celery", "-A", "job_manager", "worker", "-l", "INFO"]
+    container_name: celery
+    env_file:
+      - .env
+    depends_on:
+      - rabbitmq
+
+  db:
+    image: postgres:13.12
+    container_name: postgres
+    environment:
+      - POSTGRES_USER=django
+      - POSTGRES_PASSWORD=django
+      - POSTGRES_DB=django
+
+  rabbitmq:
+    image: rabbitmq:3.13-management
+    container_name: rabbitmq
+    environment:
+      - RABBITMQ_DEFAULT_USER=guest
+      - RABBITMQ_DEFAULT_PASS=guest
