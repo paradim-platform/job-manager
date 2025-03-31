@@ -1,0 +1,14 @@
+{% extends "admin/base_site.html" %}
+
+{% block content %}
+  <h1>{{ title }}</h1>
+
+  <div class="container">
+    <a href="{% url 'admin-cache-management-clear' %}"
+       class="btn btn-primary">
+      Clear Cache
+    </a>
+  </div>
+
+
+{% endblock %}

@@ -1,0 +1,43 @@
+{% extends 'base.html' %}
+{% load i18n %}
+{% load static %}
+
+{% block content %}
+  <div class="d-flex flex-wrap gap-3 justify-content-between align-items-center">
+    <div class="d-flex gap-3">
+      <button class="btn card text-bg-success filter-btn" id="filter-btn-success">
+        Success
+      </button>
+      <button class="btn card text-bg-warning filter-btn" id="filter-btn-pending">
+        Pending/Running
+      </button>
+      <button class="btn card text-bg-danger filter-btn" id="filter-btn-failure">
+        Failure
+      </button>
+      <button class="btn card text-bg-light filter-btn active" id="filter-btn-all">
+        Show All
+      </button>
+    </div>
+    <small class="text-muted">
+      <img src="{% static 'icons/info-circle.svg' %}" alt="Info" width="16" height="16" class="me-1">
+      {% trans "Refresh the page to update" %}
+    </small>
+  </div>
+
+  <ul class="list-group list-group-flush" id="submissions-list">
+    {% for submission in submissions %}
+      <li class="list-group-item">
+        <div hx-get="{% url 'submissions-detail' submission.id %}"
+             hx-trigger="load"
+             hx-swap="outerHTML">
+          <p>{{ submission }}</p>
+          <div id="spinner" class="spinner-border ml-2" role="status">
+            <span class="visually-hidden">Loading...</span>
+          </div>
+        </div>
+      </li>
+    {% endfor %}
+  </ul>
+
+  <script src="{% static 'js/filter_submitted_jobs.js' %}"></script>
+{% endblock %}

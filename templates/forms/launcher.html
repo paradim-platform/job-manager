@@ -1,0 +1,58 @@
+{% extends 'base.html' %}
+{% load i18n %}
+
+{% block content %}
+    <div class="text-start pb-4 px-4">
+        <h3>Launcher</h3>
+        <p>Launch algorithm on specified data.</p>
+    </div>
+
+    <form action="{% url 'launcher' %}" method="post">
+        <div class="container row">
+            {% csrf_token %}
+            {{ form.non_field_errors }}
+
+            <div class="col">
+                <div class="text-start mb-3">
+                    <label class="form-label">Select a runnable</label>
+                    {{ form.runnables }}
+                </div>
+
+                <div class="text-start mb-3">
+                    <label class="form-label">Select an album</label>
+                    {{ form.albums }}
+                </div>
+            </div>
+
+            <div class="col">
+                <div class="text-start mb-3">
+                    <label class="form-label">Study Date filter</label>
+                    {{ form.study_date }}
+                </div>
+                <div class="text-start mb-3">
+                    <label class="form-label">Series Description filter</label>
+                    {{ form.series_description }}
+                </div>
+            </div>
+        </div>
+
+        <div>
+            Number of series to be processed by the algorithm:
+            <div id="number-series-fitted">
+                ?
+            </div>
+            <button type="button"
+                    class="btn"
+                    hx-post="{% url 'launcher-find-number-fit' %}"
+                    hx-trigger="click"
+                    hx-target="#number-series-fitted">
+                Update
+                <span class="htmx-indicator spinner-border spinner-border-sm" aria-hidden="true"></span>
+                <span class="visually-hidden" role="status">Loading...</span>
+            </button>
+        </div>
+
+          <input type="submit" class="btn btn-outline-light m-4" value="Submit to Paradim"/>
+          <a class="btn btn-outline-light" href="{% url "submissions" %}">See submissions status</a>
+    </form>
+{% endblock %}

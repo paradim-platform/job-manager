@@ -1,0 +1,55 @@
+{% extends 'base.html' %}
+{% load i18n %}
+
+{% block content %}
+    <div class="text-start pb-4 px-4">
+        <h3>Aggregate</h3>
+        <p>Aggregate your results in a json or CSV file.</p>
+    </div>
+
+    <form action="{% url 'aggregate'|urlencode %}" method="post">
+        <div class="container">
+            {% csrf_token %}
+            {{ form.non_field_errors }}
+
+            <div class="row">
+                <div class="col">
+                    <div class="text-start mb-3">
+                        <label class="form-label">{% trans "Select an album" %}</label>
+                        {{ form.album }}
+                        {% if form.album.errors %}
+                            <div class="alert alert-danger mt-2">
+                                {{ form.album.errors }}
+                            </div>
+                        {% endif %}
+                    </div>
+                </div>
+                <div class="col">
+                    <div class="text-start mb-3">
+                        <label class="form-label">{% trans "Algorithm" %}</label>
+                        {{ form.series_description_filter }}
+                        {% if form.series_description_filter.errors %}
+                            <div class="alert alert-danger mt-2">
+                                {{ form.series_description_filter.errors }}
+                            </div>
+                        {% endif %}
+                    </div>
+                </div>
+            </div>
+            <div class="row justify-content-center">
+                <div class="col-auto">
+                    <label class="form-label">{% trans "Output format" %}</label>
+                    {{ form.output_format }}
+                    {% if form.output_format.errors %}
+                        <div class="alert alert-danger mt-2">
+                            {{ form.output_format.errors }}
+                        </div>
+                    {% endif %}
+                </div>
+            </div>
+            <input type="submit" class="btn btn-outline-light mt-4" value="Aggregate results" id="submitBtn"/>
+            <a class="btn btn-outline-light mt-4" href="{% url "aggregate-results" %}">See past aggregate results</a>
+        </div>
+    </form>
+{% endblock %}
+

@@ -1,0 +1,18 @@
+{% extends 'base.html' %}
+{% load i18n %}
+
+{% block content %}
+    <ul class="list-group list-group-flush">
+        {% for result in results %}
+            <li class="list-group-item">
+                <div hx-get="{% url 'aggregate-result-button' result %}"
+                     hx-trigger="load, every 4s">
+                    {{ result }}
+                    <div id="spinner" class="spinner-border ml-2" role="status">
+                        <span class="visually-hidden">Loading...</span>
+                    </div>
+                </div>
+            </li>
+        {% endfor %}
+    </ul>
+{% endblock %}
