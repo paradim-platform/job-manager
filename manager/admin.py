@@ -1,8 +1,11 @@
 from django.contrib import admin
+from django.db.models import QuerySet
+from django.http import HttpRequest
 from django.urls import reverse
 from django.utils.safestring import mark_safe
 
 from .models import App, GeneratedSeries, Job, Level, Modality, Runnable, Size
+from .services.jobs import rerun_job
 
 
 @admin.register(App)
@@ -34,8 +37,16 @@ class RunnableAdmin(admin.ModelAdmin):
         return obj.app.automatic_run
 
 
+@admin.action(description='Rerun selected jobs')
+def rerun_jobs(_: admin.ModelAdmin, __: HttpRequest, queryset: QuerySet):
+    for job in queryset:
+        rerun_job(job)
+
+
 @admin.register(Job)
 class JobAdmin(admin.ModelAdmin):
+    actions = [rerun_jobs]
+
     list_display = ['slurm_id', 'state', 'app', 'version', 'study_instance_uid', 'series_instance_uid', 'last_change']
     list_filter = ['state', 'runnable__app__name']
 
@@ -43,7 +54,7 @@ class JobAdmin(admin.ModelAdmin):
     search_fields = ['study_instance_uid', 'series_instance_uid', 'slurm_id', 'runnable__app__name',
                      'runnable__version']
 
-    ordering = ['last_change']
+    ordering = ['-last_change']
     readonly_fields = ['slurm_id', 'state', 'app', 'study_instance_uid', 'series_instance_uid', 'last_change',
                        'generated_series_list']
 
@@ -74,12 +85,12 @@ class JobAdmin(admin.ModelAdmin):
 
 @admin.register(GeneratedSeries)
 class GeneratedSeries(admin.ModelAdmin):
-    list_display = ['series_instance_uid', 'created', 'job']
+    list_display = ['series_instance_uid', 'created', 'job', 'is_technical_sr']
 
     search_help_text = 'Enter a series uid or a job id'
     search_fields = ['series_instance_uid', 'job__slurm_id', 'job__runnable__app__name']
 
-    readonly_fields = ['series_instance_uid', 'job', 'created']
+    readonly_fields = ['series_instance_uid', 'created', 'job', 'is_technical_sr']
 
     def job(self, generated_series: GeneratedSeries):
         change_url = reverse('admin:job_manager_job_change', args=(generated_series.job.id,))

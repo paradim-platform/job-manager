@@ -27,6 +27,19 @@
                 <div class="col">
                     <div class="text-start mb-3">
                         <label class="form-label">{% trans "Algorithm" %}</label>
+                        {{ form.runnable }}
+                        {% if form.runnable.errors %}
+                            <div class="alert alert-danger mt-2">
+                                {{ form.runnable.errors }}
+                            </div>
+                        {% endif %}
+                    </div>
+                </div>
+            </div>
+            <div class="row">
+                <div class="col">
+                    <div class="text-start mb-3">
+                        <label class="form-label">{% trans "Series Description filter" %}</label>
                         {{ form.series_description_filter }}
                         {% if form.series_description_filter.errors %}
                             <div class="alert alert-danger mt-2">
@@ -34,6 +47,8 @@
                             </div>
                         {% endif %}
                     </div>
+                </div>
+                <div class="col">
                 </div>
             </div>
             <div class="row justify-content-center">

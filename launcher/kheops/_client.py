@@ -53,11 +53,12 @@ class KheopsApiClient:
     def __init__(self, url: str):
         self.url = url
 
-    def get_series_in_album(self, album_id: str, modality: str) -> list[Series]:
-        response = httpx.get(
-            url=f'{self.url}/album-content/{album_id}?modality={modality}',
-            timeout=300,  # 5 mins
-        )
+    def get_series_in_album(self, album_id: str, modality: str | None = None) -> list[Series]:
+        url = f'{self.url}/album-content/{album_id}'
+        if modality is not None:
+            url += f'?modality={modality}'
+
+        response = httpx.get(url=url, timeout=300)  # 5 mins
 
         if response.status_code == HTTPStatus.OK:
             data = response.json()

@@ -8,6 +8,7 @@ from manager.models.app import Modality, Runnable
 class Job(models.Model):
     class State(models.TextChoices):
         APP_ERROR = 'APP_ERROR', _('The application encountered an unexpected error')
+        CANCELLED = 'CANCELLED', _('The job was cancelled.')
         TECHNICAL_ERROR = 'TECHNICAL_ERROR', _('Error due to the platform, please contact PARADIM maintainers.')
         FINISHED = 'FINISHED', _('Successful')
         RUNNING = 'RUNNING', _('Running')
@@ -43,6 +44,8 @@ class GeneratedSeries(models.Model):
     job = models.ForeignKey(Job, on_delete=models.CASCADE)
     modality = models.ForeignKey(Modality, blank=True, null=True, on_delete=models.DO_NOTHING)
     series_instance_uid = models.CharField(max_length=256)
+    is_technical_sr = models.BooleanField(default=False)
+
     created = models.DateTimeField(auto_now_add=True)
 
     def __str__(self):

@@ -1,16 +1,25 @@
 from django import forms
-from django.forms import ValidationError
-from django.utils.translation import gettext as _
 
 from launcher.cache.albums import retrieve_user_albums
+from manager.models import Runnable
 
 
 class AggregateForm(forms.Form):
     album = forms.ChoiceField()
+    runnable = forms.ModelChoiceField(
+        queryset=Runnable.objects.filter(is_active=True),
+        widget=forms.Select(
+            attrs={'class': 'form-select my-2'},
+        ),
+    )
     series_description_filter = forms.CharField(
         widget=forms.TextInput(
-            attrs={'class': 'form-control my-2', 'placeholder': 'ex. "my_algo:0.1.0"'},
-        )
+            attrs={
+                'class': 'form-control my-2',
+                'placeholder': 'ex. "my_algo:0.0.1 - *something*"'
+            },
+        ),
+        required=False
     )
     output_format = forms.ChoiceField(
         choices=[('json', 'json'), ('csv', 'csv')],
@@ -20,17 +29,22 @@ class AggregateForm(forms.Form):
     def __init__(self, access_token: str, user_id: str, *args, **kwargs):
         super().__init__(*args, **kwargs)
 
+        albums = [(album.id_, album.label) for album in retrieve_user_albums(access_token, user_id)]
+        albums = sorted(albums, key=lambda a: a[1])
         self.fields['album'].widget = forms.Select(
-            choices=[(album.id_, album.label) for album in retrieve_user_albums(access_token, user_id)],
+            choices=albums,
             attrs={'class': 'form-select my-2'},
         )
 
     def clean_series_description_filter(self):
-        """Validate field."""
+        """
+        If a custom series_description_filter was used, validated it at least fit the runnable (app:version).
+        If not, raise a bad form error.
+        """
         series_description_filter = self.cleaned_data['series_description_filter']
-        series_description_filter = series_description_filter.split(' - ')[0]
+        runnable = self.cleaned_data['runnable']
 
-        if ':' not in series_description_filter:
-            raise ValidationError(f'"{series_description_filter}" ' + _('does not seems to be a valid algorithm name (e.g. my_algo:0.1.0).'))
-
-        return series_description_filter
+        app_name = runnable.app.name
+        app_version = runnable.runnable.version
+        if series_description_filter and not series_description_filter.startswith(f'{app_name}:{app_version}'):
+            raise forms.ValidationError(f'The series_description_filter must start with "{app_name}:{app_version}"')

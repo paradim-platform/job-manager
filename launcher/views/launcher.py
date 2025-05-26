@@ -10,7 +10,7 @@ from manager.models.app import Runnable
 from manager.models.token import retrieve_token
 from ..cache.albums import retrieve_user_albums
 from ..models import Submission
-from ..tasks import retrieve_series, submit_jobs
+from ..tasks.job import retrieve_series, submit_jobs
 
 
 def launcher_view(request: HttpRequest) -> HttpResponse:
