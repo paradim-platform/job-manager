@@ -1,5 +1,3 @@
-from django.db.models import Max, QuerySet
-
 from executor.executor import setup_and_submit_slurm_job
 from manager.models import Job, Runnable
 from manager.serializers import JobWithoutConstraintValidationSerializer
@@ -41,7 +39,7 @@ def submit_job(modality: str,
         job_data = JobWithoutConstraintValidationSerializer(job).data
         setup_and_submit_slurm_job.apply_async(
             kwargs={'job_data': job_data},
-            priority=3
+            priority=5
         )
 
     return jobs

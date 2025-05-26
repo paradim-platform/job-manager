@@ -79,5 +79,12 @@
             <pre>{{ job.logs }}</pre>
         </div>
         {% endif %}
+
+        <div class="field mt-4">
+            <form method="post" action="{% url 'jobs-rerun' job.id %}">
+                {% csrf_token %}
+                <button type="submit" class="btn btn-primary">Rerun Job</button>
+            </form>
+        </div>
     </div>
 {% endblock %}

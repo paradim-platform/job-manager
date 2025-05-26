@@ -1,14 +1,15 @@
 from django.contrib.auth import logout
-from django.http import HttpRequest, HttpResponse, HttpResponseNotFound
+from django.http import Http404, HttpRequest, HttpResponse
 from django.shortcuts import redirect, reverse
 from django.template.response import TemplateResponse
 from django.views.decorators.http import require_http_methods
 
+from manager.models import Runnable
 from manager.models.token import retrieve_token
-from ..cache.aggregation import init_aggregation_cache, retrieve_aggregation_results_cache
 from ..cache.albums import retrieve_user_albums
 from ..forms.aggregate import AggregateForm
-from ..tasks import create_aggregation_file
+from ..models import AggregationSubmission
+from ..tasks.aggregate import create_aggregation_file
 
 
 @require_http_methods(["GET", "POST"])
@@ -27,18 +28,23 @@ def aggregate_view(request: HttpRequest) -> HttpResponse:
 
         if form.is_valid():
             album_id = form.cleaned_data['album']
-            output_format = form.cleaned_data['output_format']
             series_description_filter = form.cleaned_data['series_description_filter']
+            output_format = form.cleaned_data['output_format']
+            runnable: Runnable = form.cleaned_data['runnable']
 
-            init_aggregation_cache(user_id, album_id, series_description_filter, output_format)
+            aggregation = AggregationSubmission.objects.create(
+                filetype=AggregationSubmission.FileType.CSV if output_format == 'csv' else AggregationSubmission.FileType.JSON,
+                state=AggregationSubmission.State.SUBMITTED,
+                user=user,
+                runnable=runnable,
+                album_id=album_id,
+            )
 
             create_aggregation_file.apply_async(
                 kwargs={
-                    'album_id': album_id,
+                    'aggregation_pk': aggregation.pk,
                     'access_token': access_token,
-                    'user_id': user_id,
                     'series_description_filter': series_description_filter,
-                    'output_format': output_format
                 },
                 priority=4
             )
@@ -52,35 +58,41 @@ def aggregate_view(request: HttpRequest) -> HttpResponse:
 
 
 def aggregate_results_view(request: HttpRequest) -> HttpResponse:
-    results = retrieve_aggregation_results_cache(request.user.username)
+    aggregations = AggregationSubmission.objects.filter(user=request.user).order_by('-created').defer('result')
 
-    return TemplateResponse(request, 'aggregate_results.html', {'results': results})
+    return TemplateResponse(request, 'aggregate_results.html', {'aggregations': aggregations})
 
 
-def aggregate_result_view(request: HttpRequest, result_key: str) -> HttpResponse:
-    results = retrieve_aggregation_results_cache(request.user.username)
+def aggregate_result_view(request: HttpRequest, aggregation_id: str) -> HttpResponse:
+    aggregations = AggregationSubmission.objects.filter(pk=aggregation_id, user=request.user)
 
-    data = results.get(result_key, None)
+    if not aggregations.exists():
+        raise Http404()
 
-    if data is None or data == 'running':
+    aggregation = aggregations.first()
+
+    if aggregation.state in [AggregationSubmission.State.SUBMITTED, AggregationSubmission.State.RUNNING]:
         return HttpResponse(f"""
-                {result_key} 
+                {aggregation} 
                 <div id="spinner" class="spinner-border ml-2" role="status">
                     <span class="visually-hidden">Loading...</span>
                 </div>
                 """)
 
-    return HttpResponse(f"""<a href="{reverse('aggregate-result-file', kwargs={'result_key': result_key})}">{result_key}</a>""")
+    return HttpResponse(f"""<a href="{reverse('aggregate-result-file', kwargs={'aggregation_id': aggregation.id})}">{aggregation}</a>""")
 
 
-def aggregate_result_file(request: HttpRequest, result_key: str) -> HttpResponse:
-    results = retrieve_aggregation_results_cache(request.user.username)
-    data = results.get(result_key, None)
+def aggregate_result_file(request: HttpRequest, aggregation_id: str) -> HttpResponse:
+    aggregations = AggregationSubmission.objects.filter(pk=aggregation_id, user=request.user)
+    if not aggregations.exists():
+        raise Http404()
 
-    if data is None:
-        return HttpResponseNotFound(request)
+    aggregation = aggregations.first()
+    data = aggregation.result
+    is_csv = aggregation.filetype == AggregationSubmission.FileType.CSV
+    filename = f'{str(aggregation)}.csv' if is_csv else f'{str(aggregation)}.json'
 
-    response = HttpResponse(data.encode(), content_type='text/csv' if result_key[:-4] == '.csv' else 'text/plain')
-    response['Content-Disposition'] = f'attachment; filename="{result_key}"'
+    response = HttpResponse(data.encode(), content_type='text/csv' if is_csv else 'text/plain')
+    response['Content-Disposition'] = f'attachment; filename="{filename}"'
 
     return response

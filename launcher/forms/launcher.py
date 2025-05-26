@@ -35,8 +35,10 @@ class LauncherForm(forms.Form):
     def __init__(self, access_token: str, user_id: str, *args, **kwargs):
         super().__init__(*args, **kwargs)
 
+        albums = [(album.id_, album.label) for album in retrieve_user_albums(access_token, user_id)]
+        albums = sorted(albums, key=lambda a: a[1])
         self.fields['albums'].widget = forms.Select(
-            choices=[(album.id_, album.label) for album in retrieve_user_albums(access_token, user_id)],
+            choices=albums,
             attrs={'class': 'form-select my-2'},
         )
 

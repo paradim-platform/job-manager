@@ -82,7 +82,7 @@ class GeneratedSeriesSerializer(serializers.ModelSerializer):
 
     class Meta:
         model = models.GeneratedSeries
-        fields = ['series_instance_uid', 'modality', 'app_info', 'source_series_instance_uid']
+        fields = ['series_instance_uid', 'modality', 'is_technical_sr', 'app_info', 'source_series_instance_uid']
 
     def create(self, validated_data: dict) -> models.Job:
         # Find the corresponding job before creating a GeneratedSeries
@@ -99,6 +99,7 @@ class GeneratedSeriesSerializer(serializers.ModelSerializer):
             'series_instance_uid': instance.series_instance_uid,
             'job': {
                 'source_series_instance_uid': instance.series_instance_uid,
+                'is_technical_sr': instance.is_technical_sr,
                 'app_info': {
                     'name': instance.job.runnable.app.name,
                     'version': instance.job.runnable.version,

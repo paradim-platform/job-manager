@@ -3,11 +3,11 @@
 
 {% block content %}
     <ul class="list-group list-group-flush">
-        {% for result in results %}
+        {% for aggregation in aggregations %}
             <li class="list-group-item">
-                <div hx-get="{% url 'aggregate-result-button' result %}"
+                <div hx-get="{% url 'aggregate-result-button' aggregation.id %}"
                      hx-trigger="load, every 4s">
-                    {{ result }}
+                    {{ aggregation }}
                     <div id="spinner" class="spinner-border ml-2" role="status">
                         <span class="visually-hidden">Loading...</span>
                     </div>

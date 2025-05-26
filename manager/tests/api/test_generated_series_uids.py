@@ -39,6 +39,7 @@ class GeneratedSeriesInstanceUIDTest(APITestCaseWithRunnable):
                                 'modality': 'CT',
                                 'version': '1.12.3'
                             },
+                            'is_technical_sr': False,
                             'source_series_instance_uid': '1.123.12345.123.1234.987654321'
                         },
                         'series_instance_uid': '1.123.12345.123.1234.987654321'

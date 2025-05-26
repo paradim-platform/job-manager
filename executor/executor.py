@@ -1,10 +1,15 @@
+import io
+import os
 import pathlib
 import re
+import shutil
 import tempfile
+import zipfile
 
 import pyorthanc
 
 from job_manager.celery import app
+from launcher.kheops import client_api as kheops_client_api
 from manager.models import GeneratedSeries, Job, Level
 from manager.serializers import JobWithoutConstraintValidationSerializer
 from . import kheops, orthanc, schedulers, ssh
@@ -27,6 +32,12 @@ def setup_and_submit_slurm_job(job_data: dict) -> None:
         logger.error(f'Validation error: {job_serializer.errors}')
         return
 
+    if not job.runnable.is_active:
+        logger.info(f'{job} is inactive. Skipping.')
+        job.state = Job.State.CANCELLED
+        job.save()
+        return
+
     generated_seriess = GeneratedSeries.objects.filter(
         job__runnable__app__name=job.runnable.app.name,
         job__runnable__version=job.runnable.version,
@@ -37,14 +48,15 @@ def setup_and_submit_slurm_job(job_data: dict) -> None:
         if job.kheops_album_id is not None:
             logger.info(f'{job} exists, copying corresponding results to album {job.kheops_album_id}.')
             for generated_series in generated_seriess:
-                kheops.client.copy_series_to_target_album(generated_series.series_instance_uid, job.kheops_album_id)
+                if generated_series.is_technical_sr is False:
+                    kheops.client.copy_series_to_target_album(generated_series.series_instance_uid, job.kheops_album_id)
         else:
             logger.info(f'{job} exists, but no target album has been provided. Skipping.')
 
     elif job.state == Job.State.APP_ERROR:
         logger.info(f'{job} failed since app {job.runnable} raised an error. Skipping.')
 
-    elif job.state in [Job.State.SUBMITTED_TO_QUEUE, Job.State.TECHNICAL_ERROR]:
+    elif job.state in [Job.State.SUBMITTED_TO_QUEUE, Job.State.TECHNICAL_ERROR, Job.State.CANCELLED]:
         logger.debug(f'Submit {job} to Slurm...')
         try:
             with tempfile.TemporaryDirectory() as tmp_dir:
@@ -65,13 +77,13 @@ def setup_and_submit_slurm_job(job_data: dict) -> None:
         if job.kheops_album_id is not None:
             # Re-submitting to Queue the job after submitting to SLURM so that when the job will be FINISHED,
             # the result will be added to the target album.
-            setup_and_submit_slurm_job.apply_async(args=[job_data], priority=4, countdown=300)  # 5 mins delay, with higher priority
+            setup_and_submit_slurm_job.apply_async(args=[job_data], priority=2, countdown=300)  # 5 mins delay, with higher priority
 
     elif job.state in [Job.State.RUNNING, Job.State.SUBMITTED_TO_SLURM]:
         # Since the job state is running or submitted to slurm,
         # Resubmit it until a result/error happens
         logger.debug(f'{job} has already been submitted to Slurm or is running. Re-queuing...')
-        setup_and_submit_slurm_job.apply_async(args=[job_data], priority=4, countdown=300)  # 5 mins delay, with higher priority
+        setup_and_submit_slurm_job.apply_async(args=[job_data], priority=2, countdown=300)  # 5 mins delay, with higher priority
 
     else:
         raise NotImplementedError(f'job State {job.state} not handled.')
@@ -100,7 +112,36 @@ def _pull_data(job: Job, tmp_directory: str) -> None:
     elif job.runnable.level.value == Level.STUDY:
         logger.info(f'Pulling data (Study) from Orthanc ({series_list[0]}).')
         study = pyorthanc.Study(id_=series_list[0].study_identifier, client=orthanc.client)
-        study.download(f'{tmp_directory}/{job.zip_filename}')
+
+        # Filter series in Study to only keep the series in the album (the ones that the user is allowed to see)
+        kheops_series_uids = [s.uid for s in kheops_client_api.get_series_in_album(job.kheops_album_id)]
+
+        # Download all allowed series
+        tmp_study_dir = f'{tmp_directory}/study_dir'
+        for series in study.series:
+            if series.uid in kheops_series_uids:
+                # Prepare Series directory
+                series_modality = series.modality
+                tmp_series_dir = f'{tmp_study_dir}/{series.uid}'
+                os.makedirs(tmp_series_dir, exist_ok=True)
+
+                # Download and extract
+                with tempfile.TemporaryDirectory() as tmp_dir_for_series_zip:
+                    series.download(f'{tmp_dir_for_series_zip}/series.zip')
+
+                    with zipfile.ZipFile(f'{tmp_dir_for_series_zip}/series.zip', 'r') as zip_ref:
+                        for i, name in enumerate(zip_ref.namelist()):
+                            # Read a specific DICOM file in zip
+                            with zip_ref.open(name) as dcm_file:
+                                dcm_bytes = dcm_file.read()
+
+                            # Write the DICOM file
+                            with open(f'{tmp_series_dir}/{series_modality}{i}.dcm', 'wb') as file:
+                                file.write(dcm_bytes)
+
+        # Zip the allowed series
+        # NOTE: `make_archive` put a .zip at the end of the filename. We need to use `.replace(".zip", "")`
+        shutil.make_archive(f'{tmp_directory}/{job.zip_filename.replace(".zip", "")}', 'zip', tmp_study_dir)
 
     else:
         logger.error(f'Failed to pull data from Orthanc because of level={job.runnable.level.value}.')
