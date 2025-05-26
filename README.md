@@ -2,10 +2,10 @@
 
 ## Need
 
-- Orthanc
-- Kheops
-- RabbitMQ
-- SLURM
+- [Orthanc](https://orthanc.uclouvain.be/)
+- [Kheops](https://kheops.online/)
+- [RabbitMQ](https://www.rabbitmq.com/)
+- [SLURM](https://slurm.schedmd.com/documentation.html)
 - Microsoft EntraID configuration
 
 
